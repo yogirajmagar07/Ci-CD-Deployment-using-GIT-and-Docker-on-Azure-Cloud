@@ -1,0 +1,51 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build and deploy container app to Azure Web App - application7
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: 'ubuntu-latest'
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Log in to registry
+      uses: docker/login-action@v2
+      with:
+        registry: https://flaskimage.azurecr.io/
+        username: ${{ secrets.AzureAppService_ContainerUsername_710897d8d9ed409ca88e32f1c0f1a86a }}
+        password: ${{ secrets.AzureAppService_ContainerPassword_8cb6f42c096a4154b433dc3dc9d061d5 }}
+
+    - name: Build and push container image to registry
+      uses: docker/build-push-action@v3
+      with:
+        push: true
+        tags: flaskimage.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_710897d8d9ed409ca88e32f1c0f1a86a }}/flaskimage:${{ github.sha }}
+        file: ./Dockerfile
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: 'production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+
+    steps:
+    - name: Deploy to Azure Web App
+      id: deploy-to-webapp
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'application7'
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AzureAppService_PublishProfile_f57f0a792e164f1daeae0970dc1e9b40 }}
+        images: 'flaskimage.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_710897d8d9ed409ca88e32f1c0f1a86a }}/flaskimage:${{ github.sha }}'
